@@ -2,31 +2,21 @@
 % Please edit documentation in R/roll.R
 \name{roll}
 \alias{roll}
-\alias{roll.data.frame}
-\alias{roll.grouped_df}
 \title{Generate rolling windows}
 \usage{
-roll(data, ...)
-
-\method{roll}{data.frame}(data, width = 1L, align = c("left", "right",
-  "center"), partial = TRUE, indices = NULL, from = 1L, to = n,
-  by = 1L, offsets = NULL, ...)
-
-\method{roll}{grouped_df}(data, width = 1L, align = c("left", "right",
-  "center"), partial = TRUE, indices = NULL, from = 1L, to = n,
-  by = 1L, offsets = NULL, ...)
+roll(n, width = 1L, align = c("left", "right", "center"), partial = TRUE,
+  indices = NULL, from = 1L, to = n, by = 1L, offsets = NULL)
 }
 \arguments{
-\item{data}{A data frame}
-
-\item{...}{Arguments passed to methods}
+\item{n}{A positive, scalar integer representing the number
+of observations (items to choose from).}
 
 \item{width}{The window width.}
 
 \item{align}{Is the window left-aligned, right-aligned, or centered
 relative to the reference index of the window.}
 
-\item{partial}{logical or numeric. If \code{FALSE} all indexes of a rolling
+\item{partial}{A logical flag or numeric vector. If \code{FALSE} all indexes of a rolling
 window must be within the rows (or groups) of \code{data}. If \code{TRUE},
 then the subset of indexes that are in range are used.
 A numeric argument to \code{partial} can be used to determine the minimal
@@ -43,21 +33,6 @@ numbers are indices before the index, while positive numbers are after the
 index. If \code{NULL}, the offsets are generated from the \code{width}
 and \code{align} arguments.}
 }
-\value{
-A data frame with rows equal to the number of windows and the following columns:
-\describe{
-\item{train}{A list of \code{\link[modelr]{resample}} objects. Training sets.}
-\item{test}{A list of \code{\link[modelr]{resample}} objects. Test sets.}
-\item{.id}{An integer vector of identifiers}
-}
-}
 \description{
 Generate resample objects of rolling windows over elements of a data frame.
 }
-\section{Methods (by class)}{
-\itemize{
-\item \code{data.frame}: Generate windows from the rows of the data frame.
-
-\item \code{grouped_df}: Generate windows from the groups of the data frame.
-}}
-

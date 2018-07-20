@@ -1,167 +1,106 @@
-#' Generate K cross-validation test-training pairs
+#' Generate test/train splits
 #'
-#' \code{holdout_frac} splits the data so that proportion \code{size} is in test
-#' set and \code{1 - size} is in the training set. Likewise, \code{holdout_n}
-#' splits the data so that \code{size} elements are in the test set and the
-#' remainder are in the training set.
+#' Functions to generate test/train splits. The function `holdout_n()`
+#' generates splits such that `size` observations are in the test
+#' set and `n - size` is in the training set. The function `holdout_frac()`
+#' splits the data such that `frac` proportion of elements are in the test set
+#' and `1 - frac` proportion are in the training set.
 #'
-#' @param data A data frame
-#' @param size For \code{holdout_n}, the number of elements in the test set.
-#'   For \code{holdout_frac}, the fraction of elements in test set.
-#' @param K Number of test/train splits to generate.
-#' @param shuffle If \code{TRUE}, the observations are randomly assigned to the
-#'   test and training sets. If \code{FALSE}, then the \emph{first} \code{size}
-#'   elements are assigned to the test set, and
-#'   the remainder of the observations are assigned to the training set.
-#' @param stratify If \code{TRUE}, then test-train splits are within each
-#'   code group, so that the final test and train subsets have approximately
-#'   equal proportions of each group. If \code{FALSE}, the the test-train splits
-#'   splits groups into the testing and training sets.
-#' @param prob Probability weight that an element is in the \code{test} set.
-#'   If non-\code{NULL} this is numeric vector with \code{nrow(data)} row weights
-#'   if \code{data} is a data frame or a grouped data frame and
-#'   \code{stratify = TRUE}, or \code{n_groups(data)} group weights if \code{data} is
-#'   a grouped data frame and \code{stratify = FALSE}.
-#' @param ... Arguments passed to methods.
-#' @seealso This function is similar to the \pkg{modelr} function
-#'   \code{\link[modelr]{crossv_mc}}, but with more features.
-#' @templateVar numrows \code{K} rows and
-#' @template return_crossv_df
+#' Either `holdout_frac()` and `holdout_n()`, when combined with
+#' `shuffle = TRUE` and `times > 1` can be used to generate test/train splits
+#' using Monte Carlo cross-validation.
+#' The function `crossv_mc()` is a convenience function for Monte Carlo
+#' cross-validation.
+#'
+#' The function `holdout_idx()` generates test/train splits from manually
+#' specified indexes.
+#'
+#' @template param-n
+#' @template param-times
+#' @param size A scalar integer representing the number of elements in the
+#'   test set.
+#' @param prob A numeric vector with observation-specific probabilities that
+#'   an observation is the test set. If `NULL`, all observations have equal
+#'   probabilities.
+#' @param shuffle A logical scalar indicating whether to shuffle the
+#'   items prior to splitting into test/train sets. This should be used
+#'   whenever `times > 1`.
+#'
 #' @export
 #' @example inst/examples/ex-holdout.R
-holdout_frac <- function(data, ...) {
-  UseMethod("holdout_frac")
+#' @importFrom rlang is_scalar_logical is_null is_double
+holdout_n <- function(n, times = 1L, size = 1L, shuffle = TRUE, prob = NULL) {
+  assert_that(is_scalar_integerish(n) & n >= 0L)
+  assert_that(is_scalar_integerish(size) & size >= 1L)
+  assert_that(is_scalar_logical(shuffle))
+  assert_that(is_null(prob) || is_double(prob))
+  rerun(times, holdout_n_one(size, shuffle = shuffle, prob = prob))
 }
 
-# Note: I wanted to use the same names as sample_n and sample_frac in dplyr
-# for consistency
-
-#' @describeIn holdout_frac Split rows in a data frame into test and training
-#'   data sets.
-#' @export
-holdout_frac.data.frame <- function(data, size = 0.3, K = 1L, shuffle = TRUE,
-                                    prob = NULL, ...) {
-  # TODO: should I allow for size %in% c(0, 1) which will give size 0
-  assert_that(is.number(size) && size >= 0 && size <= 1)
-  assert_that(is.number(K) && K >= 1)
-  assert_that(is.flag(shuffle))
-  assert_that(is.null(prob) || (is.numeric(prob) &&
-                                  length(prob) %in% c(1, nrow(data))))
-  res <- holdout_frac_(nrow(data), size = size, K = K, shuffle = shuffle)
-  to_crossv_df(res, data)
-}
-
-#' @describeIn holdout_frac Splits within each group of a grouped data frame
-#'   into test and training sets if \code{stratify = FALSE}. This ensures that the test and training
-#'   sets will have approximately equal proportions of each group in the training
-#'   and test sets. If \code{stratify = TRUE}, then the groups are split into test and training sets.
-#' @importFrom dplyr n_groups group_size
-#' @export
-holdout_frac.grouped_df <- function(data, size = 0.3, K = 1L, shuffle = TRUE,
-                                    stratify = FALSE, prob = NULL,
-                                    ...) {
-  assert_that(is.numeric(size) && all(size >= 0) && all(size <= 1))
-  assert_that(is.number(K) && K >= 1)
-  assert_that(is.flag(shuffle))
-  assert_that(is.flag(stratify))
-  idx <- group_indices_lst(data)
-  if (stratify) {
-    assert_that(length(size) %in% c(1L, n_groups(data)))
-    if (length(size) == 1) size <- rep(size, n_groups(data))
-    size <- round(size * group_size(data))
+holdout_n_one <- function(n, size = 1L, shuffle = TRUE, prob = prob) {
+  if (shuffle) {
+    idx <- sample.int(n, size = size, replace = FALSE, prob = prob)
+    ret <- sample_idx(out_id = idx, n = n)
   } else {
-    assert_that(length(size) == 1)
-    size <- round(size * length(idx))
-  }
-  holdout_n(data, size = size, K = K, shuffle = shuffle, stratify = stratify,
-            prob = prob, ...)
-}
-
-#' @rdname holdout_frac
-#' @export
-holdout_n <- function(data, ...) {
-  UseMethod("holdout_n")
-}
-
-#' @describeIn holdout_frac Split rows in a data frame into test and training
-#'   data sets.
-#' @export
-holdout_n.data.frame <- function(data, size = 1L, K = 1L, shuffle = TRUE,
-                                 prob = NULL, ...) {
-  # TODO: should I check that size <= nrow(data) ? or just return size 0 sets
-  assert_that(is.number(size) && size >= 1)
-  assert_that(is.number(K) && K >= 1)
-  assert_that(is.flag(shuffle))
-  assert_that(is.null(prob) || (is.numeric(prob) &&
-                                  length(prob) %in% c(1L, nrow(data))))
-  res <- holdout_n_(nrow(data), size = size, K = K, shuffle = shuffle,
-                    prob = prob)
-  to_crossv_df(res, data)
-}
-
-#' @describeIn holdout_frac Splits within each group of a grouped data frame
-#'   into test and training sets if \code{stratify = FALSE}. This ensures that the test and training
-#'   sets will have approximately equal proportions of each group in the training
-#'   and test sets. If \code{stratify = TRUE}, then the groups are split into test and training sets.
-#' @importFrom dplyr n_groups
-#' @export
-holdout_n.grouped_df <- function(data, size = 1L, K = 1L, shuffle = TRUE,
-                                 stratify = FALSE, prob = NULL, ...) {
-  assert_that(is.numeric(size) && all(size >= 1))
-  size <- as.integer(size)
-  assert_that(is.number(K) && K >= 1)
-  assert_that(is.flag(shuffle))
-  assert_that(is.flag(stratify))
-  assert_that(is.null(prob) || is.numeric(prob))
-  idx <- group_indices_lst(data)
-  if (stratify) {
-    # allow for different sizes for each group
-    assert_that(length(size) %in% c(1L, n_groups(data)))
-    if (length(size) == 1) size <- rep(size, n_groups(data))
-    if (!is.null(prob)) {
-      assert_that(length(prob) %in% nrow(data))
-      prob <- split(prob, dplyr::group_indices(data))
+    ret <- if (size == n) {
+      sample_idx(out_id = seq_len(n), in_id = integer(0), n = n)
+    } else if (size == 0) {
+      sample_idx(in_id = seq_len(n), out_id = integer(0))
     } else {
-      prob <- map(seq_len(n_groups(data)), ~ NULL)
+      sample_idx(in_id = seq(1, n - size), out_id = seq(n - size + 1, n))
     }
-    f <- function(idx, size, prob) {
-      mutate_(holdout_n_(length(idx), size = size, K = K, shuffle = shuffle),
-              train = ~ map(train, function(i) idx[i]),
-              test = ~ map(test, function(i) idx[i]))
+  }
+  ret
+}
+
+#' @rdname holdout_n
+#' @param frac A numeric scalar between 0 and 1 representing the proportion of
+#'   items in the test set.
+#' @export
+holdout_frac <- function(n, times = 1L, frac = 0.3, shuffle = TRUE,
+                         prob = NULL) {
+  assert_that(is_scalar_double(frac))
+  frac <- max(min(0, frac), 1)
+  holdout_n(n, size = floor(frac * n), times = times, shuffle = shuffle,
+            prob = prob)
+}
+
+#' @rdname holdout_n
+#' @export
+crossv_mc <- function(n, times = 25, frac = 0.3, prob = NULL) {
+  holdout_frac(n = n, frac = frac, times = times, prob = prob, shuffle = TRUE)
+}
+
+#' @rdname holdout_n
+#' @param test,train A list of integer vectors, each containing the indexes
+#'   in the test (train) splits. If test (train) `NULL`, then the index values
+#'   will be set to the complement of the train (test) indexes.
+#'
+#' @importFrom purrr transpose
+#' @export
+holdout_idx <- function(n, train = NULL, test = NULL) {
+  if (is.integer(train)) {
+    train <- list(train)
+  }
+  if (is.integer(test)) {
+    test <- list(test)
+  }
+  if (is.null(test)) {
+    if (is.null(train)) {
+      stop("Either `test` or `train` must be non-`NULL`.", call. = FALSE)
+    } else {
+      ret <- map(test, function(i) {
+        list(in_id = complement(i, n), out_id = i)
+      })
     }
-    res <- summarise_(group_by_(purrr::pmap_df(list(idx = idx, size = size,
-                                                    prob = prob), f), ".id"),
-                      train = ~ list(flatten_int(train)),
-                      test = ~ list(flatten_int(test)))
   } else {
-    assert_that(length(size) == 1)
-    if (!is.null(prob)) assert_that(length(prob) %in% n_groups(data))
-    res <- mutate_(holdout_n_(length(idx), size = size, K = K,
-                              shuffle = shuffle, prob = prob),
-                   train ~ map(train, function(i) flatten_int(idx[i])),
-                   test ~ map(test, function(i) flatten_int(idx[i])))
-  }
-  to_crossv_df(res, data)[, c("train", "test", ".id")]
-}
-
-# using size for the name of the heldout set and n for the size of the
-# vector is confusing, but more consistent with the names of the other functions
-# x as the name as the first arg doesn't make sense if it is a single integer.
-holdout_n_ <- function(n, size = 1L, K = 1L, shuffle = TRUE, prob = NULL) {
-  f <- function(i) {
-    if (shuffle) {
-      idx <- sample.int(n, n, replace = FALSE, prob = prob)
+    if (is.null(train)) {
+      ret <- map(test, function(i) {
+        list(in_id = i, out_id = complement(i, n))
+      })
     } else {
-      idx <- seq_len(n)
+      ret <- transpose(list(in_id = train, out_id = test))
     }
-    test_idx <- utils::head(idx, size)
-    tibble(train = list(setdiff(idx, test_idx)),
-           test = list(test_idx),
-           .id = i)
   }
-  map_df(seq_len(K), f)
-}
-
-holdout_frac_ <- function(n, size = 0.3, K = 1L, shuffle = TRUE, prob = NULL) {
-  holdout_n_(n, size = size * n, K = K, shuffle = shuffle, prob = prob)
+  ret
 }

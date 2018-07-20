@@ -1,4 +1,4 @@
-library(testthat)
-library(resamplr)
+library("testthat")
+library("ramsleep")
 
-test_check("resamplr")
+test_check("ramsleep")

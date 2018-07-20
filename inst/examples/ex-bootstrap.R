@@ -1,10 +1,9 @@
-# example from modelr::bootstrap
-library("purrr")
-library("dplyr")
-boot <- bootstrap(mtcars, 100)
+# ordinary non-parametric bootstrap
+bootstrap(20, 5)
 
-models <- map(boot$sample, ~ lm(mpg ~ wt, data = .))
-tidied <- map_df(models, broom::tidy, .id = "id")
+# Bayesian bootstrap
+bootstrap(20, 5, bayes = TRUE)
 
-hist(subset(tidied, term == "wt")$estimate)
-hist(subset(tidied, term == "(Intercept)")$estimate)
+# weighted bootstrap
+w <- c(rep(5, 5), rep(1, 15))
+bootstrap(20, 5, weights = w / sum(w))

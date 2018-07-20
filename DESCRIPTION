@@ -1,6 +1,6 @@
-Package: resamplr
 Type: Package
-Title: Resampling methods
+Package: ramsleep
+Title: Resampling, Cross-Validation, and Permutation Methods Infrastucture
 Version: 0.0.1
 Authors@R: c(person("Jeffrey", "Arnold", role = c("aut", "cre"),
                     email = "jeffrey.arnold@gmail.com"),
@@ -12,32 +12,33 @@ Authors@R: c(person("Jeffrey", "Arnold", role = c("aut", "cre"),
                     comment = "Some code extracted from the boot package"),
              person("Achim", "Zeileis", role = "ctb",
                     comment = "Some code extracted from rollapply in the zoo package"))
-Description: Additional resampling methods for the 'resampler' class in the 'modelr' package.
-  Resampling and similar methods implemented include: bootstrap methods (simple bootstrap,
+Description: Resampling and similar methods implemented include: bootstrap methods (simple bootstrap,
   weighted bootstrap, balanced bootstrap, moving-blocks bootstrap),
   test-training splits, cross-validation (leave-one-out, leave-p-out, 
   k-fold, time-series k-fold, time series rolling windows),
   jackknife (delete-one and delete-p), permutations, and rolling windows.
-  These are implemented as generic functions which include a grouped data method
-  that implements group-wise or stratified versions of all the above.
 License: GPL-3
-Encoding: UTF-8
-LazyData: true
-RoxygenNote: 6.0.1
-Imports:
-  assertthat,
-  combinat,
-  dplyr,
-  modelr,
-  purrr,
-  stringr,
-  tibble
-Suggests:
-  boot,
-  broom,
-  knitr,
-  MASS,
-  rmarkdown,
-  testthat,
-  tidyverse
+Imports: 
+    assertthat (>= 0.2.0),
+    combinat (>= 0.0.8),
+    dplyr (>= 0.7.6),
+    modelr (>= 0.1.2),
+    purrr (>= 0.2.5),
+    rlang (>= 0.2.1),
+    stringr (>= 1.3.1),
+    tibble (>= 1.4.2)
+Suggests: 
+    boot,
+    broom (>= 0.4.5),
+    knitr (>= 1.20),
+    MASS,
+    rmarkdown (>= 1.10),
+    spelling (>= 1.2),
+    testthat (>= 2.0.0),
+    tidyverse (>= 1.2.1)
 VignetteBuilder: knitr
+Encoding: UTF-8
+Language: en-US
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 6.0.1.9000
